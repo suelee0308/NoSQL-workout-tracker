@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const { Workout } = require("../models");
 const path = require('path');
+const mongoose = require('mongoose')
 
 router.get("/exercise", (req, res) => {
   res.sendFile(path.join(__dirname, '../public/exercise.html'))
@@ -25,39 +26,42 @@ router.get("/api/workouts", async(req, res) => {
   }
 });
 
-// router.put("/api/workouts", ({params},res) => {
-//    Workout.update({
-        
-//       },
-//       {
-//         $set: {
-          
-//         }
-//       },
-  
-//       (error, edited) => {
-//         if (error) {
-//           console.log(error);
-//           res.send(error);
-//         } else {
-//           console.log(edited);
-//           res.send(edited);
-//         }
-//       })
-// })
-
-
-router.post("/api/workouts", (req,res) => {
-  const newWorkout = req.body;
-  Workout.save(newWorkout, (error, saved) => {
-    if (error) {
-      console.log(error);
-    } else {
-      res.send(saved);
+router.put("/api/workouts/:id", async (req,res) => {
+  try { 
+    const put = await Workout.updateOne({ _id: mongoose.Types.ObjectId(req.params.id)}, {$push: {exercises: req.body}}, {new:true}) 
+    res.json(put)  
+  }
+    catch(err) {
+      console.log(err)
     }
-  });
 });
 
-// router.get("/api/workouts/range")
+
+router.post("/api/workouts", async (req,res) => {
+  const newWorkout = req.body;
+  const exercise = await Workout.create(newWorkout);
+  console.log(exercise);
+  res.json(exercise);
+  
+});
+
+router.get("/api/workouts/range", async (req,res) => {
+  try{
+  const past = await Workout.aggregate([
+    {
+      $sort: {_id: -1}
+    },
+    {
+      $limit: 7
+    },
+    {
+      $addFields: {totalDuration: {$sum: "$exercises.duration"}}
+    }
+  ])
+  res.json(past)
+} catch(err) {
+  res.json(err)};
+});
+
 
 module.exports = router;
